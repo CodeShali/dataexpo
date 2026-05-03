@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm --version)",
+      "Bash(gh auth *)",
+      "Bash(gh repo *)",
+      "Bash(cp *)",
+      "Bash(python3 -c \"import json,sys; p=json.load\\(sys.stdin\\); print\\('Node engines:', p.get\\('engines',{}\\)\\); print\\('Name:', p.get\\('name'\\)\\); print\\('Scripts:', list\\(p.get\\('scripts',{}\\).keys\\(\\)\\)\\)\")"
+    ]
+  }
+}
