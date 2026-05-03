@@ -2,8 +2,7 @@
 
 import { signIn } from 'next-auth/react'
 import { useState } from 'react'
-import { Button } from '@/components/ui/button'
-import { Loader2 } from 'lucide-react'
+import { Loader2, Eye, EyeOff } from 'lucide-react'
 
 function GoogleIcon() {
   return (
@@ -25,12 +24,52 @@ function GithubIcon() {
 }
 
 export function LoginForm() {
+  const [mode, setMode] = useState<'signin' | 'signup'>('signin')
   const [loadingProvider, setLoadingProvider] = useState<string | null>(null)
+  const [showPassword, setShowPassword] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [form, setForm] = useState({ name: '', email: '', password: '' })
 
-  const handleSignIn = async (provider: string) => {
+  const handleOAuth = async (provider: string) => {
     setLoadingProvider(provider)
-    await signIn(provider, { callbackUrl: '/' })
+    await signIn(provider, { callbackUrl: '/dashboard' })
   }
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setError(null)
+    setLoadingProvider('credentials')
+
+    if (mode === 'signup') {
+      const res = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: form.name, email: form.email, password: form.password }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setError(data.error || 'Registration failed')
+        setLoadingProvider(null)
+        return
+      }
+    }
+
+    const result = await signIn('credentials', {
+      email: form.email,
+      password: form.password,
+      callbackUrl: '/dashboard',
+      redirect: false,
+    })
+
+    if (result?.error) {
+      setError('Invalid email or password')
+      setLoadingProvider(null)
+    } else {
+      window.location.href = '/dashboard'
+    }
+  }
+
+  const loading = loadingProvider !== null
 
   return (
     <div className="relative z-10 w-full max-w-md">
@@ -44,31 +83,98 @@ export function LoginForm() {
           <p className="mt-2 text-sm text-text-secondary">See what AI knows about you.</p>
         </div>
 
-        {/* Auth buttons */}
+        {/* Mode toggle */}
+        <div className="flex rounded-xl border border-[#1e293b] overflow-hidden mb-6">
+          <button
+            onClick={() => { setMode('signin'); setError(null) }}
+            className={`flex-1 py-2 text-sm font-medium transition-colors ${mode === 'signin' ? 'bg-accent-amber/10 text-accent-amber' : 'text-text-muted hover:text-text-secondary'}`}
+          >
+            Sign In
+          </button>
+          <button
+            onClick={() => { setMode('signup'); setError(null) }}
+            className={`flex-1 py-2 text-sm font-medium transition-colors ${mode === 'signup' ? 'bg-accent-amber/10 text-accent-amber' : 'text-text-muted hover:text-text-secondary'}`}
+          >
+            Sign Up
+          </button>
+        </div>
+
+        {/* Email/password form */}
+        <form onSubmit={handleSubmit} className="space-y-3 mb-4">
+          {mode === 'signup' && (
+            <input
+              type="text"
+              placeholder="Full name"
+              value={form.name}
+              onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
+              className="w-full rounded-xl border border-[#1e293b] bg-[#060a12] px-4 py-2.5 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent-amber/40"
+            />
+          )}
+          <input
+            type="email"
+            placeholder="Email address"
+            required
+            value={form.email}
+            onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
+            className="w-full rounded-xl border border-[#1e293b] bg-[#060a12] px-4 py-2.5 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent-amber/40"
+          />
+          <div className="relative">
+            <input
+              type={showPassword ? 'text' : 'password'}
+              placeholder="Password (min 8 characters)"
+              required
+              minLength={8}
+              value={form.password}
+              onChange={e => setForm(f => ({ ...f, password: e.target.value }))}
+              className="w-full rounded-xl border border-[#1e293b] bg-[#060a12] px-4 py-2.5 pr-10 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent-amber/40"
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword(s => !s)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-secondary"
+            >
+              {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+            </button>
+          </div>
+
+          {error && <p className="text-xs text-red-400">{error}</p>}
+
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full rounded-xl bg-accent-amber px-4 py-2.5 text-sm font-semibold text-black transition-opacity hover:opacity-90 disabled:opacity-60"
+          >
+            {loading && loadingProvider === 'credentials'
+              ? <Loader2 className="h-4 w-4 animate-spin mx-auto" />
+              : mode === 'signup' ? 'Create Account' : 'Sign In'
+            }
+          </button>
+        </form>
+
+        {/* Divider */}
+        <div className="flex items-center gap-3 mb-4">
+          <div className="flex-1 h-px bg-[#1e293b]" />
+          <span className="text-xs text-text-muted">or continue with</span>
+          <div className="flex-1 h-px bg-[#1e293b]" />
+        </div>
+
+        {/* OAuth buttons */}
         <div className="space-y-3">
           <button
-            onClick={() => handleSignIn('google')}
-            disabled={loadingProvider !== null}
+            onClick={() => handleOAuth('google')}
+            disabled={loading}
             className="flex w-full items-center justify-center gap-3 rounded-xl border border-[#e2e8f0]/20 bg-white px-4 py-3 text-sm font-medium text-gray-900 transition-all hover:bg-gray-50 disabled:opacity-60"
           >
-            {loadingProvider === 'google' ? (
-              <Loader2 className="h-4 w-4 animate-spin text-gray-500" />
-            ) : (
-              <GoogleIcon />
-            )}
+            {loadingProvider === 'google' ? <Loader2 className="h-4 w-4 animate-spin text-gray-500" /> : <GoogleIcon />}
             Continue with Google
           </button>
 
           <button
-            onClick={() => handleSignIn('github')}
-            disabled={loadingProvider !== null}
+            onClick={() => handleOAuth('github')}
+            disabled={loading}
             className="flex w-full items-center justify-center gap-3 rounded-xl border border-[#1e293b] bg-[#161b22] px-4 py-3 text-sm font-medium text-white transition-all hover:bg-[#1c2431] disabled:opacity-60"
           >
-            {loadingProvider === 'github' ? (
-              <Loader2 className="h-4 w-4 animate-spin text-white" />
-            ) : (
-              <GithubIcon />
-            )}
+            {loadingProvider === 'github' ? <Loader2 className="h-4 w-4 animate-spin text-white" /> : <GithubIcon />}
             Continue with GitHub
           </button>
         </div>

@@ -5,7 +5,7 @@ import { LoginForm } from '@/components/auth/LoginForm'
 
 export default async function LoginPage() {
   const session = await getServerSession(authOptions)
-  if (session) redirect('/')
+  if (session) redirect('/dashboard')
 
   return (
     <main className="min-h-screen flex items-center justify-center bg-[#060a12] px-4">
